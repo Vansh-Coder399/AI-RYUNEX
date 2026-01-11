@@ -1,16 +1,44 @@
-# React + Vite
+# 🤖 Ryunex AI  
+> Your Smart, Friendly & Powerful AI Companion ⚡
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Ryunex AI is a modern AI-powered web application designed to assist users with **smart conversations, coding help, study support, creative ideas, and more** — all wrapped in a clean, fast, and futuristic UI.
 
-Currently, two official plugins are available:
+Think of it like **Jarvis 🤖 + Best Friend 🧠 + Study Buddy 📚** in one place.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 🚀 Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 🧠 **AI-Powered Chat**  
+  Smart, accurate, and helpful responses using **Google Gemini API**
 
-## Expanding the ESLint configuration
+- 💬 **Multiple Interaction Modes**  
+  - Smart Mode  
+  - Comfort / Companion Mode  
+  - Study & Productivity Support  
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- ⚡ **Fast & Lightweight**  
+  Optimized for speed with minimal load time
+
+- 🌐 **Web-Based**  
+  No installation required — works directly in the browser
+
+- 🎨 **Modern UI**  
+  Clean, minimal, and futuristic design (Ryunex vibe ✨)
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**
+  - HTML
+  - CSS
+  - JavaScript
+
+- **AI Backend**
+  - Google Gemini API (`gemini-1.5-flash / pro`)
+
+- **Hosting**
+  - Vercel
+
+---
