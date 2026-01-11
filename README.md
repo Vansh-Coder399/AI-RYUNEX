@@ -28,15 +28,6 @@ Think of it like **Jarvis 🤖 + Best Friend 🧠 + Study Buddy 📚** in one pl
 
 ---
 
-## 🛠️ Tech Stack
-
-- **Frontend**
-  - HTML
-  - CSS
-  - JavaScript
-
-- **AI Backend**
-  - Google Gemini API (`gemini-1.5-flash / pro`)
 
 - **Hosting**
   - Vercel
