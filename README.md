@@ -7,14 +7,15 @@ Think of it like **Jarvis 🤖 + Best Friend 🧠 + Study Buddy 📚** in one pl
 
 ---
 
+
 ## 🚀 Features
 
 - 🧠 **AI-Powered Chat**  
   Smart, accurate, and helpful responses using **Google Gemini API**
 
 - 💬 **Multiple Interaction Modes**  
-  - Smart Mode  
-  - Comfort / Companion Mode  
+  - Coder Mode  
+  - Chill / Solance Mode  
   - Study & Productivity Support  
 
 - ⚡ **Fast & Lightweight**  

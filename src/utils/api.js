@@ -1,12 +1,163 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Initialize Gemini Client
-// Ensure VITE_GEMINI_API_KEY is set in your .env file
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-if (!apiKey) {
-  console.error("Missing VITE_GEMINI_API_KEY in environment variables");
+// --- GEMINI MANAGER START ---
+/**
+ * @fileoverview Manages Gemini API interactions with robust fallback mechanisms.
+ * Handles key rotation, error recovery, and system alerts.
+ */
+export class GeminiManager {
+  /**
+   * @param {string[]} apiKeys - Array of Gemini API keys (Primary, Secondary, Tertiary, etc.)
+   * @param {string} modelName - The model version to use (default: gemini-1.5-flash)
+   * @param {Object} config - Optional generation config (temperature, tokens, etc.)
+   */
+  constructor(apiKeys, modelName = "gemini-1.5-flash", config = {}) {
+    if (!Array.isArray(apiKeys) || apiKeys.length === 0) {
+      throw new Error("GeminiManager: At least one API key is required.");
+    }
+
+    this.apiKeys = apiKeys;
+    this.modelName = modelName;
+    this.config = config;
+
+    // Track the current active key index. 
+    // We persist this index so we don't keep retrying dead keys (like quota exceeded) 
+    // on subsequent messages within the same session.
+    this.currentKeyIndex = 0;
+  }
+
+  /**
+   * Sends a prompt to Gemini and returns the text response.
+   * Automatically rotates keys on failure.
+   * 
+   * @param {string} prompt - The user's chat message.
+   * @param {Object} options - Extra options for chat history, system prompts, etc.
+   * @returns {Promise<string>} - The AI response or the busy message.
+   */
+  async generateResponse(prompt, { history = [], systemInstruction = null, modelName = null, signal = null, temperature = null } = {}) {
+    let attempts = 0;
+    const totalKeys = this.apiKeys.length;
+
+    // Loop through keys until we find one that works or exhaust all options
+    while (attempts < totalKeys) {
+      const currentKey = this.apiKeys[this.currentKeyIndex];
+
+      try {
+        // Initialize the API with the current key
+        const genAI = new GoogleGenerativeAI(currentKey);
+
+        // Use provided modelName or fallback to instance default
+        const model = genAI.getGenerativeModel({
+          model: modelName || this.modelName,
+          systemInstruction: systemInstruction,
+          ...this.config
+        });
+
+        let text;
+
+        // Handle Chat (Multi-turn) vs GenerateContent (Single-turn)
+        if (history && history.length > 0) {
+          const chat = model.startChat({
+            history: history,
+            generationConfig: {
+              ...this.config,
+              temperature: temperature ?? this.config.temperature
+            }
+          });
+
+          const result = await chat.sendMessage(prompt);
+
+          // Manual Abort Check (Gemini SDK doesn't fully support signal in sendMessage yet)
+          if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+
+          const response = await result.response;
+          text = response.text();
+        } else {
+          const result = await model.generateContent(prompt);
+          if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+          const response = await result.response;
+          text = response.text();
+        }
+
+        // If successful, return the text immediately
+        return text;
+
+      } catch (error) {
+        // Do not rotate keys if the user cancelled the request
+        if (error.name === 'AbortError' || signal?.aborted) {
+          throw error;
+        }
+
+        console.warn(
+          `[GeminiManager] Key ending in ...${currentKey.slice(-4)} failed.`,
+          `Reason: ${error.message || "Unknown error"}`
+        );
+
+        // Rotate to the next key for the immediate retry
+        this.currentKeyIndex = (this.currentKeyIndex + 1) % totalKeys;
+        attempts++;
+      }
+    }
+
+    // If the loop finishes, it means all keys failed
+    this._handleTotalFailure();
+
+    // Return the exact fallback message required for the UI
+    return "Server is busy, please talk to owner of RYUNEX";
+  }
+
+  /**
+   * Handles the critical scenario where all API keys have failed.
+   * Triggers console alerts and browser notifications.
+   * @private
+   */
+  _handleTotalFailure() {
+    const msg = "CRITICAL ALERT: All Gemini API keys are exhausted or failing.";
+
+    // 1. Console Alert (Reliable for devs)
+    console.error(msg);
+
+    // 2. Browser Notification (High visibility for you as the owner)
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification("RYUNEX AI System Alert", {
+          body: "All API keys are down. Immediate rotation required.",
+          icon: "/favicon.ico" // Optional: assumes you have a favicon
+        });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            new Notification("RYUNEX AI System Alert", {
+              body: "All API keys are down. Immediate rotation required."
+            });
+          }
+        });
+      }
+    }
+
+    // 3. Dispatch Custom Event (Optional: If you want to show a specific UI modal)
+    window.dispatchEvent(new CustomEvent("ryunex-api-failure", {
+      detail: { timestamp: new Date() }
+    }));
+  }
 }
-const genAI = new GoogleGenerativeAI(apiKey);
+// --- GEMINI MANAGER END ---
+
+// Initialize Gemini Manager with multiple keys
+const API_KEYS = [
+  "AIzaSyDyiQaMqPWlNz2WGUix2ZsbMOtGTVABJoQ",
+  "AIzaSyChtdCXmscrZ8_8MrjnUeSKPEKJ610jgQM",
+  "AIzaSyDO-ySFiyCRsRLNUNrWefhDDDd5Ryxvu1k",
+  "AIzaSyApS-pnGh0iVtTWoJv7-rzcxzB41YwKe8U",
+  "AIzaSyCH0qlUFhIcRo0iF51PAeBIsvmTVGC5edk"
+].filter(key => key && !key.startsWith("YOUR_"));
+
+if (API_KEYS.length === 0) {
+  console.error("No API keys configured. Please add your Gemini API keys to the API_KEYS array in api.js");
+}
+
+// Initialize the manager with the default model
+const geminiManager = new GeminiManager(API_KEYS, 'gemini-2.5-flash');
 
 const MODELS = {
   DEFAULT: 'gemini-2.5-flash',
@@ -208,12 +359,6 @@ export const callGeminiAPI = async (message, mode, conversationHistory = [], sig
   }
 
   try {
-    // Initialize model with system instructions
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      systemInstruction: systemPrompt
-    });
-
     // Convert conversation history to Gemini format
     // Gemini uses 'user' and 'model' roles
     const history = conversationHistory.map(msg => ({
@@ -221,26 +366,19 @@ export const callGeminiAPI = async (message, mode, conversationHistory = [], sig
       parts: [{ text: msg.text || msg.content }]
     }));
 
-    // Start chat session
-    const chat = model.startChat({
+    // Use the GeminiManager to generate response with fallback logic
+    const text = await geminiManager.generateResponse(message, {
       history: history,
-      generationConfig: {
-        maxOutputTokens: 1024,
-        temperature: mode === 'Chill' ? 0.8 : 0.7,
-      },
+      systemInstruction: systemPrompt,
+      modelName: modelName,
+      signal: signal,
+      temperature: mode === 'Chill' ? 0.8 : 0.7
     });
 
-    // Send message
-    // Note: Gemini JS SDK doesn't support AbortSignal natively in sendMessage yet,
-    // so we handle the abort check manually after the promise resolves.
-    const result = await chat.sendMessage(message);
-
-    if (signal?.aborted) {
-      throw new DOMException('Aborted', 'AbortError');
+    // Check for the specific fallback message
+    if (text === "Server is busy, please talk to owner of RYUNEX") {
+      return { success: false, text: text };
     }
-
-    const response = await result.response;
-    const text = response.text();
 
     return {
       success: true,
